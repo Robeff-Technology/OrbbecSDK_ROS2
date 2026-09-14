@@ -1,0 +1,37 @@
+# Camera mount calibration for the robione vehicle, same convention as
+# camera_calibration.yaml (which keeps the bench-test values).
+#
+# The camera is mounted on the sensor kit, looking forward and 45 deg down.
+#
+# Position is the sensor kit origin expressed in base_link, taken from
+# sensor_kit_calibration.yaml (base_link -> sensor_kit_base_link). Adjust x/y/z by the
+# camera's offset within the kit if the mount moves; a few centimetres do not matter for
+# the detection field.
+#
+# Note that the kit frame is yawed ~182 deg with respect to base_link, so its +x points
+# towards the rear of the vehicle. Parenting the camera to base_link instead of the kit
+# avoids carrying that flip around: forward and 45 deg down is simply pitch = pi/4 here.
+#
+# With use_imu:=true only x/y/z and yaw are read from this file - roll and pitch come
+# from the live gravity estimate, so the 45 deg tilt does not need to be measured by
+# hand. The values below are what gets used when use_imu:=false.
+base_link:
+  camera_link:
+    x: 2.118143
+    y: 0.0
+    z: 2.265695
+    roll: 0.0
+    pitch: 0.7853982  # 45 deg nose down
+    yaw: 0.0
+
+# Alternative parent, for running with the full Autoware TF tree up
+# (launch with base_frame:=sensor_kit_base_link). Position is relative to the kit origin,
+# and the yaw cancels the kit's -3.17 rad so the camera still looks forward.
+sensor_kit_base_link:
+  camera_link:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    roll: 0.0
+    pitch: 0.7853982
+    yaw: 3.17

@@ -4507,6 +4507,10 @@ void OBCameraNode::getParameters() {
                               "right_color_decimation_filter_scale", -1);
   setAndGetNodeParameter<bool>(enable_depth_auto_exposure_priority_,
                                "enable_depth_auto_exposure_priority", false);
+  setAndGetNodeParameter<int>(depth_crop_left_, "depth_crop_left", 0);
+  setAndGetNodeParameter<int>(depth_crop_right_, "depth_crop_right", 0);
+  setAndGetNodeParameter<int>(depth_crop_top_, "depth_crop_top", 0);
+  setAndGetNodeParameter<int>(depth_crop_bottom_, "depth_crop_bottom", 0);
   setAndGetNodeParameter<int>(depth_ae_roi_left_, "depth_ae_roi_left", -1);
   setAndGetNodeParameter<int>(depth_ae_roi_top_, "depth_ae_roi_top", -1);
   setAndGetNodeParameter<int>(depth_ae_roi_right_, "depth_ae_roi_right", -1);
@@ -5936,7 +5940,61 @@ std::shared_ptr<ob::Frame> OBCameraNode::processDepthFrameFilter(
       }
     }
   }
+  applyDepthCrop(frame);
   return frame;
+}
+
+// Invalidate depth pixels in a border region by zeroing them (0 is the SDK's
+// "no data" value, so cropped pixels are skipped by the point cloud and show as
+// holes in the depth image). Used to discard the stereo occlusion band on the
+// left edge, where the right imager has no overlapping view and disparity is
+// unrecoverable.
+void OBCameraNode::applyDepthCrop(const std::shared_ptr<ob::Frame> &frame) {
+  const int left = std::max(0, depth_crop_left_);
+  const int right = std::max(0, depth_crop_right_);
+  const int top = std::max(0, depth_crop_top_);
+  const int bottom = std::max(0, depth_crop_bottom_);
+  if ((left | right | top | bottom) == 0) {
+    return;
+  }
+  if (frame == nullptr || frame->getType() != OB_FRAME_DEPTH) {
+    return;
+  }
+  auto video_frame = frame->as<ob::VideoFrame>();
+  if (video_frame == nullptr) {
+    return;
+  }
+  const int width = static_cast<int>(video_frame->getWidth());
+  const int height = static_cast<int>(video_frame->getHeight());
+  auto *data = reinterpret_cast<uint16_t *>(frame->getData());
+  if (data == nullptr || width <= 0 || height <= 0) {
+    return;
+  }
+  if (frame->getDataSize() < static_cast<uint32_t>(width) * height * sizeof(uint16_t)) {
+    RCLCPP_WARN_STREAM_ONCE(logger_,
+                            "Skip depth crop: unexpected depth frame size, expected 16-bit depth");
+    return;
+  }
+  if (left + right >= width || top + bottom >= height) {
+    RCLCPP_WARN_STREAM_ONCE(logger_, "Depth crop of "
+                                         << left << "/" << right << "/" << top << "/" << bottom
+                                         << " would remove the whole " << width << "x" << height
+                                         << " depth frame, ignoring");
+    return;
+  }
+  for (int v = 0; v < height; ++v) {
+    uint16_t *row = data + static_cast<size_t>(v) * width;
+    if (v < top || v >= height - bottom) {
+      std::fill(row, row + width, 0);
+      continue;
+    }
+    if (left > 0) {
+      std::fill(row, row + left, 0);
+    }
+    if (right > 0) {
+      std::fill(row + width - right, row + width, 0);
+    }
+  }
 }
 void OBCameraNode::setDisparitySearchOffset() {
   static bool has_run = false;

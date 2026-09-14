@@ -140,6 +140,12 @@ def generate_launch_description():
         DeclareLaunchArgument('depth_rotation', default_value='-1'),#depth rotation degree : 0, 90, 180, 270
         DeclareLaunchArgument('depth_flip', default_value='false'),
         DeclareLaunchArgument('depth_mirror', default_value='false'),
+        # Discard depth pixels at the frame edges (0 = keep all). The left band is the
+        # stereo occlusion zone, where the right imager has no overlapping view.
+        DeclareLaunchArgument('depth_crop_left', default_value='0'),
+        DeclareLaunchArgument('depth_crop_right', default_value='0'),
+        DeclareLaunchArgument('depth_crop_top', default_value='0'),
+        DeclareLaunchArgument('depth_crop_bottom', default_value='0'),
         DeclareLaunchArgument('depth_ae_roi_left', default_value='-1'),
         DeclareLaunchArgument('depth_ae_roi_right', default_value='-1'),
         DeclareLaunchArgument('depth_ae_roi_top', default_value='-1'),

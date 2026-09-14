@@ -548,6 +548,8 @@ class OBCameraNode {
 
   std::shared_ptr<ob::Frame> processDepthFrameFilter(std::shared_ptr<ob::Frame>& frame);
 
+  void applyDepthCrop(const std::shared_ptr<ob::Frame>& frame);
+
   std::shared_ptr<ob::Frame> processColorFrameFilter(std::shared_ptr<ob::Frame>& frame);
 
   std::shared_ptr<ob::Frame> processRightIrFrameFilter(std::shared_ptr<ob::Frame>& frame);
@@ -836,6 +838,11 @@ class OBCameraNode {
   int left_color_decimation_filter_scale_ = -1;
   bool enable_right_color_decimation_filter_ = false;
   int right_color_decimation_filter_scale_ = -1;
+  // depth output crop (pixels discarded from each edge, -1/0 = disabled)
+  int depth_crop_left_ = 0;
+  int depth_crop_right_ = 0;
+  int depth_crop_top_ = 0;
+  int depth_crop_bottom_ = 0;
   // depth ae roi
   int depth_ae_roi_left_ = -1;
   int depth_ae_roi_top_ = -1;

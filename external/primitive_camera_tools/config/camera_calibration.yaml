@@ -1,0 +1,17 @@
+# Camera mount calibration, following the sensor-kit convention used for the lidars
+# (see <sensor_kit>_description/config/sensor_kit_calibration.yaml).
+#
+# x/y/z are the mount position and are ALWAYS taken from this file -- an IMU cannot
+# observe position, only orientation.
+#
+# roll/pitch/yaw are the nominal mount orientation. They are used as-is when
+# use_imu:=false. With use_imu:=true, roll and pitch are replaced by the live
+# gravity-referenced estimate and yaw is used as the starting heading.
+base_link:
+  camera_link:
+    x: 2.0
+    y: 0.0
+    z: 0.5
+    roll: 0.0
+    pitch: 0.0
+    yaw: 0.0

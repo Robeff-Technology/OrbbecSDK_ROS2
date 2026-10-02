@@ -1,0 +1,45 @@
+# Robione vehicle camera parameters (Gemini 335L).
+#
+# Loaded by robione_camera.launch.py via the driver's `config_file_path`.
+#
+# NOTE ON PRECEDENCE: gemini_330_series.launch.py merges this file ON TOP of the
+# command-line arguments (see load_parameters() in that file), so any key present
+# here WINS over `key:=value` on the command line. Change values here, not on the
+# command line. Keys that are not declared launch arguments are silently ignored.
+
+# --- depth stream ---------------------------------------------------------
+device_preset: "High Accuracy"
+depth_precision: "1mm"
+laser_energy_level: 6
+depth_width: 1280
+depth_height: 800
+# 1280x800 only offers 5fps on this USB 2.0 link (see notes at bottom).
+depth_fps: 10
+
+# Discard the left stereo occlusion band, where the right imager has no
+# overlapping view and disparity is unrecoverable.
+depth_crop_left: 150
+
+# --- depth filtering ------------------------------------------------------
+enable_disp_outliers_filter: true
+enable_noise_removal_filter: true
+enable_hardware_noise_removal_filter: true
+enable_temporal_filter: true
+enable_threshold_filter: true
+threshold_filter_min: 300     # mm
+threshold_filter_max: 5000    # mm
+
+# --- point cloud ----------------------------------------------------------
+enable_point_cloud: true
+enable_colored_point_cloud: true
+depth_registration: true      # required for the colored cloud (aligns depth to color)
+point_cloud_decimation_filter_factor: 8
+
+# --- IMU ------------------------------------------------------------------
+enable_accel: true
+enable_gyro: true
+enable_sync_output_accel_gyro: true
+
+# --- color stream ---------------------------------------------------------
+enable_color: true
+color_fps: 10

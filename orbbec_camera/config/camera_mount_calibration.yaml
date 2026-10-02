@@ -1,0 +1,38 @@
+# Camera mount calibration for the robione vehicle.
+#
+# Gives the rigid transform from a vehicle frame to the camera's root frame
+# (<camera_name>_link, which the driver publishes as the parent of all the
+# optical frames). Read by robione_camera.launch.py, which turns the selected
+# entry into a static_transform_publisher.
+#
+# The camera is mounted on the sensor kit, looking forward and 45 deg down.
+# Position is the sensor kit origin expressed in base_link, taken from
+# sensor_kit_calibration.yaml (base_link -> sensor_kit_base_link). Adjust x/y/z by
+# the camera's offset within the kit if the mount moves; a few centimetres do not
+# matter for the detection field.
+#
+# Angles are in radians (roll/pitch/yaw, applied ZYX).
+base_link:
+  camera_link:
+    x: 2.118143
+    y: 0.0
+    z: 2.265695
+    roll: 0.0
+    pitch: 0.7853982  # 45 deg nose down
+    yaw: 0.0
+
+# Alternative parent, for running with the full Autoware TF tree up
+# (launch with base_frame:=sensor_kit_base_link). Position is relative to the kit
+# origin, and the yaw cancels the kit's -3.17 rad so the camera still looks forward.
+#
+# Note the kit frame is yawed ~182 deg with respect to base_link, so its +x points
+# towards the rear of the vehicle. Parenting the camera to base_link instead avoids
+# carrying that flip around: forward and 45 deg down is simply pitch = pi/4 there.
+sensor_kit_base_link:
+  camera_link:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    roll: 0.0
+    pitch: 0.7853982
+    yaw: 3.17

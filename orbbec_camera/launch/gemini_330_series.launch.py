@@ -2,8 +2,10 @@ import os
 import yaml
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, GroupAction
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import PushRosNamespace, ComposableNodeContainer, Node
+from ament_index_python.packages import get_package_share_directory
 from launch_ros.descriptions import ComposableNode
 
 
@@ -383,8 +385,28 @@ def generate_launch_description():
                 ])
             ]
 
+    # Declared separately from `args`: load_parameters() turns every entry of `args`
+    # into a camera node parameter, and these two are launch-only.
+    rviz_args = [
+        DeclareLaunchArgument('enable_rviz', default_value='false'),
+        DeclareLaunchArgument(
+            'rviz_config',
+            default_value=os.path.join(
+                get_package_share_directory('orbbec_camera'), 'config', 'orbbec_camera.rviz')),
+    ]
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', LaunchConfiguration('rviz_config')],
+        output='log',
+        condition=IfCondition(LaunchConfiguration('enable_rviz')),
+    )
+
     return LaunchDescription(
-        args + [
-            OpaqueFunction(function=lambda context: create_node_action(context, args))
+        args + rviz_args + [
+            OpaqueFunction(function=lambda context: create_node_action(context, args)),
+            rviz_node,
         ]
     )

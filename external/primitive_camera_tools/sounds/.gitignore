@@ -1,5 +1,0 @@
-# Locally supplied audio. danza_kuduro.wav is converted from the user's own copy of a
-# commercially released track: it is NOT redistributable, so it must not be committed
-# or shipped with this package. The launch simply points at whatever sound_file it is
-# given, so keeping it untracked costs nothing.
-danza_kuduro.wav

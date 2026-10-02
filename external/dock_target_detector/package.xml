@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>dock_target_detector</name>
+  <version>0.1.0</version>
+  <description>AprilTag dock target detection and pose estimation for reverse
+    docking: reads the tag id for identity, then measures range, bearing and face
+    yaw from the colour image and the registered depth image.</description>
+  <maintainer email="nuri.ulusoy@robeff.com">nuri</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>cv_bridge</depend>
+  <depend>message_filters</depend>
+
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <!-- AprilTag detection is cv2.aruco (DICT_APRILTAG_36h11), part of OpenCV.
+       No zbar, no apriltag3: the whole dependency set is permissively licensed
+       (OpenCV Apache-2.0, NumPy BSD) with no copyleft. -->
+  <exec_depend>primitive_camera_tools</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

@@ -1,0 +1,72 @@
+%PDF-1.4
+1 0 obj
+<</Type/Catalog/Pages 2 0 R>>
+endobj
+2 0 obj
+<</Type/Pages/Kids[3 0 R]/Count 1>>
+endobj
+3 0 obj
+<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.276 841.890]/Resources<</Font<</F1 5 0 R/F2 6 0 R>>>>/Contents 4 0 R>>
+endobj
+4 0 obj
+<</Length 2233>>
+stream
+1 1 1 rg 0 0 595.276 841.890 re f
+0 0 0 rg
+28.346 746.220 538.583 67.323 re
+28.346 678.898 201.969 67.323 re
+297.638 678.898 67.323 67.323 re
+432.283 678.898 134.646 67.323 re
+28.346 611.575 67.323 67.323 re
+297.638 611.575 269.291 67.323 re
+28.346 544.252 134.646 67.323 re
+364.961 544.252 67.323 67.323 re
+499.606 544.252 67.323 67.323 re
+28.346 476.929 201.969 67.323 re
+297.638 476.929 67.323 67.323 re
+432.283 476.929 134.646 67.323 re
+28.346 409.606 134.646 67.323 re
+297.638 409.606 269.291 67.323 re
+28.346 342.283 201.969 67.323 re
+297.638 342.283 269.291 67.323 re
+28.346 274.961 538.583 67.323 re
+28.346 254.551 283.465 3.402 re
+28.346 248.882 1.417 14.740 re
+310.394 248.882 1.417 14.740 re
+f
+0 0 0 rg BT /F2 11.339 Tf 320.315 250.866 Td (100 mm - measure me) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 226.772 Td (payload "TAG7"   36h11 id 7   \(8 x 8 cells\)) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 214.299 Td (marker_size = 0.1900 m   \(190.0 mm black area, edge to edge\)   module = 23.75 mm) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 189.354 Td (Mount FLAT on rigid backing - a rippled sheet corrupts the depth plane fit.) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 164.409 Td (QUIET ZONE - the one that decides whether this works at all:) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 151.937 Td (this sheet gives 0.4 of the 1 cells the spec wants. Mount on WHITE) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 139.465 Td (backing reaching >= 14 mm beyond every edge of this sheet) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 126.992 Td (\(238 mm square of white overall\). On a dark surround, decoding) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 114.520 Td (fails at any distance.) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 89.575 Td (Print at 100% / actual size; check the bar. A wrong scale costs only) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 77.102 Td (proportional PnP range and decode range - nothing else.) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 64.630 Td (Estimated decode range \(zbar, ~2 px per module\):) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 52.157 Td (    1280x720  \(fx 612\): 7.3 m) Tj ET
+0.2 0.2 0.2 rg BT /F1 9.071 Tf 28.346 39.685 Td (    1920x1080 \(fx 918\): 10.9 m) Tj ET
+endstream
+endobj
+5 0 obj
+<</Type/Font/Subtype/Type1/BaseFont/Courier>>
+endobj
+6 0 obj
+<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000054 00000 n 
+0000000105 00000 n 
+0000000234 00000 n 
+0000002517 00000 n 
+0000002578 00000 n 
+trailer
+<</Size 7/Root 1 0 R>>
+startxref
+2641
+%%EOF

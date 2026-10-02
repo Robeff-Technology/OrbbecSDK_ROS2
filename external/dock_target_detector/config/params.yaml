@@ -1,0 +1,43 @@
+/**:
+  ros__parameters:
+    # --- Target geometry -----------------------------------------------------
+    # Side of the printed tag's BLACK BORDER, edge to edge, excluding the white
+    # quiet zone. `make_dock_target` prints this number for the sheet it generates.
+    # Only the PnP cross-check uses it; the depth range, bearing and yaw do not.
+    marker_size: 0.19
+
+    # Restrict to these AprilTag 36h11 ids; empty accepts any.
+    apriltag_ids: []
+
+    # --- Depth sampling ------------------------------------------------------
+    depth_scale: 0.001          # 16UC1 depth is in mm
+    # Black tag cells absorb the IR pattern, so depth is sparse over the tag and
+    # dense over the white margin. >1.0 grows the sampling window onto that margin.
+    # Too large starts eating background, which is what RANSAC is there to reject.
+    plane_roi_scale: 1.2
+    min_plane_points: 100       # below this, fall back to the PnP-only estimate
+    max_plane_points: 4000      # subsample above this to bound per-frame cost
+    ransac_threshold: 0.01      # plane inlier band [m]
+    ransac_iterations: 100
+    min_range: 0.2              # depth outside this band is discarded [m]
+    max_range: 6.0
+
+    # --- Detection -----------------------------------------------------------
+
+    # Frames per second actually processed; the camera runs at 30. AprilTag detection
+    # is only ~4 ms, but the rest of the pipeline caps throughput around 10 Hz anyway,
+    # and 10 Hz is ample for docking (0.5 m/s is ~5 cm between updates).
+    # 0 disables the limit.
+    process_rate: 10.0
+
+    # --- Output --------------------------------------------------------------
+    publish_tf: true
+    target_frame: "dock_target"
+    publish_debug_image: true
+
+    # --- Topics --------------------------------------------------------------
+    # Depth must be REGISTERED TO COLOUR, so that a colour pixel indexes the depth
+    # image directly. The launch file sets depth_registration:=true for this.
+    color_topic: "/camera/color/image_raw"
+    color_info_topic: "/camera/color/camera_info"
+    depth_topic: "/camera/depth/image_raw"

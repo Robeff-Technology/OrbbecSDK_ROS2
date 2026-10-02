@@ -1,0 +1,147 @@
+<launch>
+  <!-- Give the Orbbec driver time to stop its streams and close the device before
+       the launch system escalates to SIGKILL. Its destructor calls clean(), but if
+       it is killed part way through, the device is left claimed and will not open
+       again until the USB port is cycled (the symptom is having to unplug and
+       replug the camera). The defaults are far too short for this driver. Recover a
+       wedged camera without unplugging it:
+           ros2 run dock_target_detector camera_reset -->
+  <let name="sigterm_timeout" value="15.0"/>
+  <let name="sigkill_timeout" value="20.0"/>
+  <!-- Camera bring-up tuned for reading a printed AprilTag dock target, plus the pose
+       estimator. The important difference from the emergency-detector launch is
+       that depth is registered to colour: the estimator indexes the depth image
+       with colour pixel coordinates, so the two streams must share a frame. -->
+
+  <arg name="launch_camera" default="true"
+       description="set false to attach to a camera that is already running"/>
+  <arg name="launch_rviz" default="false"/>
+
+  <!-- Camera mounting frame, imported from the emergency-detector launch. The RViz
+       config uses base_link as its Fixed Frame, and the driver only publishes
+       camera_link -> *_optical_frame, so WITHOUT camera_frame_publisher supplying
+       base_link -> camera_link there is no TF chain and RViz shows nothing at all:
+       no point cloud, no markers, no image overlayed in 3D. Position comes from the
+       calibration YAML; roll/pitch are estimated live from the camera IMU when
+       use_imu is true. Set publish_camera_tf false if the robot URDF already
+       publishes this hop. -->
+  <arg name="base_frame" default="base_link"/>
+  <arg name="publish_camera_tf" default="true"/>
+  <arg name="use_imu" default="true"/>
+  <arg name="integrate_yaw" default="false"/>
+  <arg name="camera_calibration_file"
+       default="$(find-pkg-share primitive_camera_tools)/config/camera_calibration.yaml"/>
+
+  <!-- Live range/pose readout. ros2 launch prefixes every line with [node-N],
+       which breaks the monitor's in-place block redraw, so here it runs in plain
+       mode (one line per update) at a slower rate, to stay readable among the
+       other nodes' logs. For the full block view, set this false and run it in
+       its own terminal instead:
+           ros2 run dock_target_detector dock_monitor
+       (XML comments cannot contain a double hyphen, so the plain and rate flags
+       are not spelled out here; see the args attribute on the node below.) -->
+  <arg name="launch_monitor" default="true"/>
+  <arg name="monitor_rate" default="4.0"/>
+  <arg name="rviz_config"
+       default="$(find-pkg-share dock_target_detector)/config/dock_detector.rviz"/>
+
+  <!-- Side of the printed tag's black border, edge to edge, EXCLUDING the
+       white quiet zone. `ros2 run dock_target_detector make_dock_target` prints the
+       value for the sheet it generates. Getting it wrong scales the PnP range by
+       the same factor; the depth range and yaw are unaffected. -->
+  <arg name="marker_size" default="0.19"/>
+
+  <arg name="color_width" default="1280"/>
+  <arg name="color_height" default="720"/>
+  <arg name="color_fps" default="30"/>
+
+  <!-- SW alignment works for any resolution pair, at CPU cost in the driver.
+       HW is free but the 335L REFUSES this profile pair: 1280x720 colour with
+       1280x800 depth gives "Current stream profile is not support hardware d2c"
+       and the pipeline never starts. Leave this SW unless you also change the
+       resolutions to a pair the device supports for D2C. -->
+  <arg name="align_mode" default="SW"/>
+
+  <!-- Point cloud decimation, matching the emergency-detector launch. This affects
+       ONLY /camera/depth/points; the detector reads /camera/depth/image_raw, so
+       decimating costs it nothing. Undecimated at 1280x720 the cloud is ~740k
+       points per message (11.8 MB, ~355 MB/s at 30 Hz), which alone makes RViz and
+       the driver lag. Factor 8 gives the same cloud the other package publishes. -->
+  <arg name="point_cloud_decimation" default="8"/>
+
+  <!-- Also from the emergency-detector launch. Crops the left band of the depth
+       image, where the stereo pair has no overlap and depth is invalid anyway.
+       With D2C this leaves the left of the COLOUR frame without depth, so a target
+       that far left falls back to the PnP estimate. Set 0 to keep the full width. -->
+  <arg name="depth_crop_left" default="0.0"/>
+  <arg name="threshold_filter_max" default="4500"/>
+
+  <!-- Frames per second the detector actually processes. The camera runs at 30, but
+       a decode plus the crop-and-upscale fallback costs ~60 ms per frame in Python,
+       so processing every frame saturates a core and builds a backlog that shows up
+       as lag. Sampling the same scene at 10 Hz loses almost no detections. -->
+  <arg name="process_rate" default="30.0"/>
+
+
+  <include file="$(find-pkg-share orbbec_camera)/launch/gemini_330_series.launch.py"
+           if="$(var launch_camera)">
+    <arg name="device_preset" value="High Accuracy"/>
+    <arg name="depth_precision" value="1mm"/>
+    <arg name="laser_energy_level" value="6"/>
+    <arg name="depth_width" value="1280"/>
+    <arg name="depth_height" value="800"/>
+    <arg name="enable_color" value="true"/>
+    <arg name="color_width" value="$(var color_width)"/>
+    <arg name="color_height" value="$(var color_height)"/>
+    <arg name="color_fps" value="$(var color_fps)"/>
+
+    <!-- Register depth into the colour frame, so /camera/depth/image_raw comes out
+         at colour resolution and a tag pixel indexes it directly. -->
+    <arg name="depth_registration" value="true"/>
+    <arg name="align_mode" value="$(var align_mode)"/>
+    <arg name="align_target_stream" value="COLOR"/>
+
+    <arg name="enable_disp_outliers_filter" value="true"/>
+    <arg name="enable_noise_removal_filter" value="true"/>
+    <arg name="enable_hardware_noise_removal_filter" value="true"/>
+    <!-- Temporal filtering smooths the plane fit while the target is static; turn it
+         off if the estimate lags once the vehicle is actually moving. -->
+    <arg name="enable_temporal_filter" value="true"/>
+    <arg name="enable_threshold_filter" value="true"/>
+    <arg name="threshold_filter_min" value="300"/>
+    <arg name="threshold_filter_max" value="$(var threshold_filter_max)"/>
+    <arg name="depth_crop_left" value="$(var depth_crop_left)"/>
+    <arg name="point_cloud_decimation_filter_factor" value="$(var point_cloud_decimation)"/>
+
+    <!-- camera_frame_publisher estimates roll/pitch from these. -->
+    <arg name="enable_accel" value="true"/>
+    <arg name="enable_gyro" value="true"/>
+    <arg name="enable_sync_output_accel_gyro" value="true"/>
+  </include>
+
+  <!-- base_frame -> camera_link. Same node and parameters the emergency-detector
+       launch uses, so both stacks put the camera in the same place. -->
+  <node pkg="primitive_camera_tools" exec="camera_frame_publisher" name="camera_frame_publisher"
+        if="$(var publish_camera_tf)" output="screen">
+    <param name="parent_frame" value="$(var base_frame)"/>
+    <param name="child_frame" value="camera_link"/>
+    <param name="calibration_file" value="$(var camera_calibration_file)"/>
+    <param name="use_imu" value="$(var use_imu)"/>
+    <param name="integrate_yaw" value="$(var integrate_yaw)"/>
+    <param name="imu_topic" value="/camera/gyro_accel/sample"/>
+  </node>
+
+  <node pkg="dock_target_detector" exec="dock_detector" name="dock_detector"
+        output="screen">
+    <param from="$(find-pkg-share dock_target_detector)/config/params.yaml"/>
+    <param name="marker_size" value="$(var marker_size)" type="float"/>
+    <param name="process_rate" value="$(var process_rate)" type="float"/>
+  </node>
+
+  <node pkg="dock_target_detector" exec="dock_monitor" name="dock_monitor"
+        if="$(var launch_monitor)" output="screen"
+        args="--plain --rate $(var monitor_rate)"/>
+
+  <node pkg="rviz2" exec="rviz2" name="rviz2" if="$(var launch_rviz)"
+        args="-d $(var rviz_config)"/>
+</launch>

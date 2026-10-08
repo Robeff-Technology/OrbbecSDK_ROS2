@@ -234,6 +234,7 @@ That is the whole thing in one command: camera, detector and the live readout.
 | `launch_monitor` | `true` | live readout, in plain mode (see below) |
 | `monitor_rate` | `4.0` | monitor updates per second |
 | `color_width` / `color_height` | `1280` / `720` | colour resolution; more pixels = more range |
+| `depth_fps` | `10` | depth rate, and so also the `/camera/depth/points` rate |
 | `align_mode` | `SW` | leave it; `HW` is refused at these resolutions (see below) |
 | `point_cloud_decimation` | `8` | matches the emergency detector; cloud only |
 | `depth_crop_left` | `150` | matches the emergency detector |

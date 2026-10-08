@@ -55,6 +55,10 @@
   <arg name="color_width" default="1280"/>
   <arg name="color_height" default="720"/>
   <arg name="color_fps" default="30"/>
+  <!-- The driver publishes a point cloud for every depth frame, so this also sets the
+       /camera/depth/points rate. 10 matches what the detector processes anyway and
+       cuts the driver's SW D2C work to a third of 30 fps. -->
+  <arg name="depth_fps" default="10"/>
 
   <!-- SW alignment works for any resolution pair, at CPU cost in the driver.
        HW is free but the 335L REFUSES this profile pair: 1280x720 colour with
@@ -91,6 +95,7 @@
     <arg name="laser_energy_level" value="6"/>
     <arg name="depth_width" value="1280"/>
     <arg name="depth_height" value="800"/>
+    <arg name="depth_fps" value="$(var depth_fps)"/>
     <arg name="enable_color" value="true"/>
     <arg name="color_width" value="$(var color_width)"/>
     <arg name="color_height" value="$(var color_height)"/>

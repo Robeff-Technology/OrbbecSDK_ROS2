@@ -24,7 +24,6 @@
   <!-- AprilTag detection is cv2.aruco (DICT_APRILTAG_36h11), part of OpenCV.
        No zbar, no apriltag3: the whole dependency set is permissively licensed
        (OpenCV Apache-2.0, NumPy BSD) with no copyleft. -->
-  <exec_depend>primitive_camera_tools</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

@@ -10,6 +10,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC -g3")
 option(USE_RK_HW_DECODER "Use Rockchip hardware decoder" OFF)
 option(USE_NV_HW_DECODER "Use Nvidia hardware decoder" OFF)
 option(INSTALL_UDEV_RULES "Install udev rule for Orbbec cameras" ON)
+# Benchmarks, IP/network tools and multi-camera examples. Off by default: on the
+# robione vehicle (single Gemini 335L over USB) none of them are used, and they are
+# ~60% of the package's compile CPU. The diagnostic tools (list_devices_node,
+# list_camera_profile_mode_node, firmware_update_tool) are always built.
+option(BUILD_TOOLS "Build benchmark, network and example tools" OFF)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Werror -Wno-pedantic -Wno-array-bounds)
@@ -187,58 +192,67 @@ rclcpp_components_register_node(
 )
 # Add nodes using the macro
 add_orbbec_executable(list_devices_node tools/list_devices_node.cpp)
-add_orbbec_executable(list_depth_work_mode_node tools/list_depth_work_mode.cpp)
 add_orbbec_executable(list_camera_profile_mode_node tools/list_camera_profile.cpp)
 add_orbbec_executable(firmware_update_tool tools/firmware_update_tool.cpp)
-add_orbbec_executable(ip_config_tool tools/ip_config_tool.cpp)
-add_orbbec_executable(set_device_ip tools/ip_config_tool.cpp)
-add_orbbec_executable(topic_statistics_node tools/topic_statistics.cpp)
-add_orbbec_executable(ob_benchmark_node tools/ob_benchmark.cpp)
-add_orbbec_executable(435le_example_node examples/Gemini_435Le_example_node/camera_example_node.cpp)
-add_orbbec_executable(service_benchmark_node scripts/service_benchmark_node.cpp)
-add_orbbec_executable(image_sync_example_node examples/multi_camera_time_sync/image_sync_example_node.cpp)
 
-install(
-  PROGRAMS
-    scripts/common_benchmark_node.py
-    scripts/service_benchmark_node.py
-  DESTINATION lib/${PROJECT_NAME}
-)
+if(BUILD_TOOLS)
+    add_orbbec_executable(list_depth_work_mode_node tools/list_depth_work_mode.cpp)
+    add_orbbec_executable(ip_config_tool tools/ip_config_tool.cpp)
+    add_orbbec_executable(set_device_ip tools/ip_config_tool.cpp)
+    add_orbbec_executable(topic_statistics_node tools/topic_statistics.cpp)
+    add_orbbec_executable(ob_benchmark_node tools/ob_benchmark.cpp)
+    add_orbbec_executable(435le_example_node examples/Gemini_435Le_example_node/camera_example_node.cpp)
+    add_orbbec_executable(service_benchmark_node scripts/service_benchmark_node.cpp)
+    add_orbbec_executable(image_sync_example_node examples/multi_camera_time_sync/image_sync_example_node.cpp)
 
-add_library(frame_latency SHARED tools/frame_latency.cpp)
-target_include_directories(frame_latency PUBLIC ${COMMON_INCLUDE_DIRS})
-target_link_libraries(frame_latency ${COMMON_LIBRARIES})
-ament_target_dependencies(frame_latency ${dependencies})
+    install(
+      PROGRAMS
+        scripts/common_benchmark_node.py
+        scripts/service_benchmark_node.py
+      DESTINATION lib/${PROJECT_NAME}
+    )
 
-rclcpp_components_register_node(frame_latency PLUGIN "orbbec_camera::FrameLatencyNode" EXECUTABLE frame_latency_node)
+    add_library(frame_latency SHARED tools/frame_latency.cpp)
+    target_include_directories(frame_latency PUBLIC ${COMMON_INCLUDE_DIRS})
+    target_link_libraries(frame_latency ${COMMON_LIBRARIES})
+    ament_target_dependencies(frame_latency ${dependencies})
 
-add_library(start_benchmark SHARED tools/start_benchmark.cpp)
-target_include_directories(start_benchmark PUBLIC ${COMMON_INCLUDE_DIRS})
-target_link_libraries(start_benchmark ${COMMON_LIBRARIES})
-ament_target_dependencies(start_benchmark ${dependencies})
+    rclcpp_components_register_node(frame_latency PLUGIN "orbbec_camera::FrameLatencyNode" EXECUTABLE frame_latency_node)
 
-rclcpp_components_register_node(
-    start_benchmark PLUGIN "orbbec_camera::tools::StartBenchmark" EXECUTABLE start_benchmark_node
-)
+    add_library(start_benchmark SHARED tools/start_benchmark.cpp)
+    target_include_directories(start_benchmark PUBLIC ${COMMON_INCLUDE_DIRS})
+    target_link_libraries(start_benchmark ${COMMON_LIBRARIES})
+    ament_target_dependencies(start_benchmark ${dependencies})
 
-add_library(multi_save_rgbir SHARED tools/multi_save_rgbir.cpp src/utils.cpp)
-target_include_directories(multi_save_rgbir PUBLIC ${COMMON_INCLUDE_DIRS})
-target_link_libraries(multi_save_rgbir ${COMMON_LIBRARIES})
-ament_target_dependencies(multi_save_rgbir ${dependencies})
+    rclcpp_components_register_node(
+        start_benchmark PLUGIN "orbbec_camera::tools::StartBenchmark" EXECUTABLE start_benchmark_node
+    )
 
-rclcpp_components_register_node(
-    multi_save_rgbir PLUGIN "orbbec_camera::tools::MultiCameraSubscriber" EXECUTABLE multi_save_rgbir_node
-)
+    add_library(multi_save_rgbir SHARED tools/multi_save_rgbir.cpp src/utils.cpp)
+    target_include_directories(multi_save_rgbir PUBLIC ${COMMON_INCLUDE_DIRS})
+    target_link_libraries(multi_save_rgbir ${COMMON_LIBRARIES})
+    ament_target_dependencies(multi_save_rgbir ${dependencies})
+
+    rclcpp_components_register_node(
+        multi_save_rgbir PLUGIN "orbbec_camera::tools::MultiCameraSubscriber" EXECUTABLE multi_save_rgbir_node
+    )
+
+    install(TARGETS frame_latency start_benchmark multi_save_rgbir ARCHIVE DESTINATION lib
+            LIBRARY DESTINATION lib RUNTIME DESTINATION bin
+    )
+    install(TARGETS list_depth_work_mode_node topic_statistics_node service_benchmark_node ob_benchmark_node 435le_example_node ip_config_tool set_device_ip image_sync_example_node DESTINATION lib/${PROJECT_NAME}/
+    )
+    install(DIRECTORY examples DESTINATION share/${PROJECT_NAME}/)
+endif()
 
 # Install rules
-install(TARGETS ${PROJECT_NAME} frame_latency start_benchmark multi_save_rgbir ARCHIVE DESTINATION lib
+install(TARGETS ${PROJECT_NAME} ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib RUNTIME DESTINATION bin
 )
 
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME}/)
-install(DIRECTORY examples DESTINATION share/${PROJECT_NAME}/)
 install(DIRECTORY SDK/licenses/ DESTINATION share/${PROJECT_NAME}/SDK/licenses)
 install(DIRECTORY ${ORBBEC_INCLUDE_DIR} DESTINATION include)
 install(DIRECTORY ${ORBBEC_LIBS_DIR}/ DESTINATION lib/ FILES_MATCHING PATTERN "*.so*")
@@ -257,7 +271,7 @@ if(DEFINED ENV{BUILDING_PACKAGE})
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/99-obsensor-libusb.rules DESTINATION /etc/udev/rules.d)
 endif()
 
-install(TARGETS list_devices_node list_depth_work_mode_node list_camera_profile_mode_node firmware_update_tool topic_statistics_node  service_benchmark_node ob_benchmark_node 435le_example_node ip_config_tool set_device_ip image_sync_example_node DESTINATION lib/${PROJECT_NAME}/
+install(TARGETS list_devices_node list_camera_profile_mode_node firmware_update_tool DESTINATION lib/${PROJECT_NAME}/
 )
 
 if(BUILD_TESTING)

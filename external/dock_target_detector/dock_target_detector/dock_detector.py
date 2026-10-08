@@ -42,6 +42,12 @@ and dense over the white quiet zone around it. That is why `plane_roi_scale`
 defaults above 1.0: it grows the depth sampling window out onto the white margin
 of the sheet. Grow it too far and it starts eating background, which is what the
 RANSAC pass is there to reject.
+
+For the docking controller (rbf_docking) the same pose also goes out as an
+rbf_tag_msgs/TagDetectionArray on `~/detections`, and `~/enable` (std_srvs/SetBool)
+switches detection on and off: docking enables it when it starts and disables it
+when it ends. While disabled the image streams are not even subscribed, so an
+idle detector costs nothing.
 """
 import math
 import time
@@ -54,9 +60,11 @@ from builtin_interfaces.msg import Duration
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 from rclpy.node import Node
+from rbf_tag_msgs.msg import TagDetection, TagDetectionArray
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import String
+from std_srvs.srv import SetBool
 from tf2_ros import TransformBroadcaster
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -159,9 +167,9 @@ class DockDetector(Node):
         self.publish_tf = p("publish_tf", True).value
         self.target_frame = p("target_frame", "dock_target").value
         self.publish_debug_image = p("publish_debug_image", True).value
-        color_topic = p("color_topic", "/camera/color/image_raw").value
+        self.color_topic = p("color_topic", "/camera/color/image_raw").value
         info_topic = p("color_info_topic", "/camera/color/camera_info").value
-        depth_topic = p("depth_topic", "/camera/depth/image_raw").value
+        self.depth_topic = p("depth_topic", "/camera/depth/image_raw").value
 
         self.bridge = CvBridge()
         self.rng = np.random.default_rng(0)
@@ -181,28 +189,65 @@ class DockDetector(Node):
         self.pub_markers = self.create_publisher(MarkerArray, "~/debug/markers", 10)
         self.pub_debug_image = self.create_publisher(Image, "~/debug/image", 1)
         self.pub_diag = self.create_publisher(DiagnosticArray, "/diagnostics", 10)
+        self.pub_detections = self.create_publisher(TagDetectionArray, "~/detections", 10)
         self.tf_broadcaster = TransformBroadcaster(self) if self.publish_tf else None
 
         self.create_subscription(CameraInfo, info_topic, self.on_info, 10)
-        color_sub = message_filters.Subscriber(
-            self, Image, color_topic, qos_profile=qos_profile_sensor_data)
-        depth_sub = message_filters.Subscriber(
-            self, Image, depth_topic, qos_profile=qos_profile_sensor_data)
-        # queue_size 1: a deeper queue only stores stale frames to pair up late.
-        self.sync = message_filters.ApproximateTimeSynchronizer(
-            [color_sub, depth_sub], queue_size=1, slop=0.05)
-        self.sync.registerCallback(self.on_frames)
+        self.image_subs = []
+        self.sync = None
+        self.enabled = False
+        self.create_service(SetBool, "~/enable", self.on_enable)
+        # true: detect from the start (bench use). false: idle until ~/enable, which is
+        # how the vehicle runs it -- rbf_docking enables it for the duration of docking.
+        self.set_enabled(bool(p("start_enabled", True).value))
 
         self.get_logger().info(
             f"dock_detector up: AprilTag 36h11, "
-            f"marker_size={self.marker_size:.3f} m")
+            f"marker_size={self.marker_size:.3f} m, "
+            f"{'enabled' if self.enabled else 'idle until ~/enable'}")
+
+    def set_enabled(self, enable):
+        """Subscribe the image streams while enabled, drop them while not.
+
+        Dropping the subscriptions rather than ignoring the frames is the point: at
+        1280x720 rclpy would otherwise still deserialise ~4 MB of colour + depth
+        per frame just to throw it away.
+        """
+        if enable == self.enabled:
+            return
+        if enable:
+            color_sub = message_filters.Subscriber(
+                self, Image, self.color_topic, qos_profile=qos_profile_sensor_data)
+            depth_sub = message_filters.Subscriber(
+                self, Image, self.depth_topic, qos_profile=qos_profile_sensor_data)
+            # queue_size 1: a deeper queue only stores stale frames to pair up late.
+            self.sync = message_filters.ApproximateTimeSynchronizer(
+                [color_sub, depth_sub], queue_size=1, slop=0.05)
+            self.sync.registerCallback(self.on_frames)
+            self.image_subs = [color_sub, depth_sub]
+        else:
+            # Humble's message_filters.Subscriber has no close(); destroy the inner one.
+            for sub in self.image_subs:
+                self.destroy_subscription(sub.sub)
+            self.image_subs = []
+            self.sync = None
+        self.enabled = enable
+
+    def on_enable(self, request, response):
+        if request.data != self.enabled:
+            self.get_logger().info(
+                "detection enabled" if request.data else "detection disabled")
+        self.set_enabled(request.data)
+        response.success = True
+        response.message = "enabled" if self.enabled else "disabled"
+        return response
 
     def on_info(self, msg):
         self.k = np.array(msg.k, dtype=np.float64).reshape(3, 3)
         self.d = np.array(msg.d, dtype=np.float64).reshape(1, -1)
 
     def detect_apriltag(self, bgr):
-        """Largest AprilTag as (payload, 4x2 corners), or None.
+        """Largest AprilTag as (payload, 4x2 corners, tag id), or None.
 
         detectMarkers returns corners clockwise from the marker's own top-left
         and refines them subpixel, so nothing further is needed: it reads a 37 px
@@ -223,7 +268,7 @@ class DockDetector(Node):
                 best = (area, int(marker_id), q)
         if best is None:
             return None
-        return f"TAG{best[1]}", best[2]
+        return f"TAG{best[1]}", best[2], best[1]
 
     def reprojection_error(self, objp, quad, rvec, tvec):
         projected, _ = cv2.projectPoints(objp, rvec, tvec, self.k, self.d)
@@ -359,11 +404,13 @@ class DockDetector(Node):
 
         found = self.detect_apriltag(bgr)
         if found is None:
+            # Empty, so a consumer can tell "nothing in view" from "detector silent".
+            self.pub_detections.publish(TagDetectionArray(header=color_msg.header))
             self.publish_diagnostics(color_msg.header, None)
             if self.publish_debug_image:
                 self.publish_debug(color_msg.header, bgr, None)
             return
-        payload, quad = found
+        payload, quad, tag_id = found
 
         pnp = self.solve_pnp(quad)
         if pnp is None:
@@ -400,7 +447,12 @@ class DockDetector(Node):
             "plane_rms": rms,
         }
 
-        self.publish_pose(color_msg.header, normal, centroid)
+        pose = self.publish_pose(color_msg.header, normal, centroid)
+        # Stamped at acquisition (the colour frame's stamp), in the colour optical frame.
+        # size 0.0: the side length is not measured here (see TagDetection.msg).
+        self.pub_detections.publish(TagDetectionArray(
+            header=color_msg.header,
+            detections=[TagDetection(id=tag_id, size=0.0, pose=pose.pose)]))
         self.pub_payload.publish(String(data=payload))
         self.publish_markers(color_msg.header, normal, centroid, quad, result)
         self.publish_diagnostics(color_msg.header, result)
@@ -435,6 +487,7 @@ class DockDetector(Node):
                 tf.transform.translation.z = centroid
             tf.transform.rotation = pose.pose.orientation
             self.tf_broadcaster.sendTransform(tf)
+        return pose
 
     def quad_3d(self, quad, normal, centroid):
         """The four image corners intersected with the fitted plane.

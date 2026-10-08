@@ -120,7 +120,7 @@ def estimate(bgr, depth):
     found = det.detect_apriltag(bgr)
     if found is None:
         return None
-    payload, quad = found
+    payload, quad, _ = found
     pnp = det.solve_pnp(quad)
     plane = det.plane_from_depth(depth, quad)
     return payload, quad, pnp, plane

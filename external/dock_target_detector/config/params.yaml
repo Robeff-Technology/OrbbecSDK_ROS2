@@ -30,6 +30,12 @@
     # 0 disables the limit.
     process_rate: 10.0
 
+    # --- Enable --------------------------------------------------------------
+    # true: detect from the start. false: idle (image streams not even subscribed)
+    # until ~/enable (std_srvs/SetBool) is called with true -- on the vehicle,
+    # rbf_docking does that when docking starts and disables it when docking ends.
+    start_enabled: true
+
     # --- Output --------------------------------------------------------------
     publish_tf: true
     target_frame: "dock_target"

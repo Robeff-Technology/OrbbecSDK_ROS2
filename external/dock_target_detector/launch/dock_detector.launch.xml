@@ -83,6 +83,10 @@
        as lag. Sampling the same scene at 10 Hz loses almost no detections. -->
   <arg name="process_rate" default="30.0"/>
 
+  <!-- false: the detector idles until its ~/enable service (std_srvs/SetBool) is called.
+       On the vehicle rbf_docking enables it for the duration of docking. -->
+  <arg name="start_enabled" default="true"/>
+
 
   <include file="$(find-pkg-share orbbec_camera)/launch/gemini_330_series.launch.py"
            if="$(var launch_camera)">
@@ -126,6 +130,7 @@
     <param from="$(find-pkg-share dock_target_detector)/config/params.yaml"/>
     <param name="marker_size" value="$(var marker_size)" type="float"/>
     <param name="process_rate" value="$(var process_rate)" type="float"/>
+    <param name="start_enabled" value="$(var start_enabled)" type="bool"/>
   </node>
 
   <node pkg="dock_target_detector" exec="dock_monitor" name="dock_monitor"

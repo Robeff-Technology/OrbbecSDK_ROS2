@@ -362,11 +362,32 @@ Colour and depth are paired with an approximate time synchroniser (50 ms slop).
 - `~/pose` (`geometry_msgs/PoseStamped`) — target face in the colour optical
   frame; x out of the face towards the camera, z the in-plane direction nearest
   vertical
+- `~/detections` (`rbf_tag_msgs/TagDetectionArray`) — the same pose with the tag
+  id, for rbf_docking; stamped at acquisition, empty when no tag is in view
 - `~/payload` (`std_msgs/String`) — decoded QR contents
 - `~/debug/image` (`sensor_msgs/Image`) — annotated colour frame
 - `~/debug/markers` (`visualization_msgs/MarkerArray`) — normal arrow + readout
 - `/diagnostics` (`diagnostic_msgs/DiagnosticArray`) — every field below
 - TF `<colour optical frame>` → `<target_frame>`
+
+### Services
+
+- `~/enable` (`std_srvs/SetBool`) — start / stop detecting. While disabled the
+  colour and depth streams are not subscribed at all. `start_enabled` sets the
+  state at launch.
+
+### Docking integration
+
+On the vehicle the detector runs idle (`start_enabled:=false`) and rbf_docking
+drives it: when docking starts it calls `/dock_detector/enable` with `true`, reads
+the tag from `/dock_detector/detections`, and disables the detector again once
+docking ends (docked, failed or cancelled). The wiring is in
+`ozismak_vehicle_launch/launch/vehicle_interface.launch.xml`.
+
+The tag frame in `~/detections` is the face frame above: **x out of the face
+towards the vehicle, y to the camera's right, z up**. rbf_docking's
+`tag_to_coupling` must be given in that frame. Only the largest tag in view is
+reported; restrict `apriltag_ids` if several can be seen at once.
 
 Diagnostic keys: `payload`, `source` (`depth` or `pnp`), `range`, `range_z`,
 `range_pnp`, `lateral`, `bearing_deg`, `yaw_deg`, `pitch_deg`, `yaw_pnp_deg`,

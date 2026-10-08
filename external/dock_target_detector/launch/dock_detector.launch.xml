@@ -15,22 +15,23 @@
 
   <arg name="launch_camera" default="true"
        description="set false to attach to a camera that is already running"/>
-  <arg name="launch_rviz" default="false"/>
+  <arg name="launch_rviz" default="true"
+       description="open RViz with config/dock_detector.rviz; false for headless runs"/>
 
-  <!-- Camera mounting frame, imported from the emergency-detector launch. The RViz
-       config uses base_link as its Fixed Frame, and the driver only publishes
-       camera_link -> *_optical_frame, so WITHOUT camera_frame_publisher supplying
-       base_link -> camera_link there is no TF chain and RViz shows nothing at all:
-       no point cloud, no markers, no image overlayed in 3D. Position comes from the
-       calibration YAML; roll/pitch are estimated live from the camera IMU when
-       use_imu is true. Set publish_camera_tf false if the robot URDF already
-       publishes this hop. -->
-  <arg name="base_frame" default="base_link"/>
+  <!-- base_link -> camera_link. The driver only publishes camera_link ->
+       *_optical_frame, and the RViz config uses base_link as its Fixed Frame, so
+       without this hop RViz shows nothing at all. Static, from
+       orbbec_camera/config/camera_mount_calibration.yaml (keep the two in sync);
+       no IMU roll/pitch correction. Set publish_camera_tf false if a URDF or
+       another node already publishes it. -->
   <arg name="publish_camera_tf" default="true"/>
-  <arg name="use_imu" default="true"/>
-  <arg name="integrate_yaw" default="false"/>
-  <arg name="camera_calibration_file"
-       default="$(find-pkg-share primitive_camera_tools)/config/camera_calibration.yaml"/>
+  <arg name="base_frame" default="base_link"/>
+  <arg name="camera_x" default="2.118143"/>
+  <arg name="camera_y" default="0.0"/>
+  <arg name="camera_z" default="2.265695"/>
+  <arg name="camera_roll" default="0.0"/>
+  <arg name="camera_pitch" default="0.7853982"/>
+  <arg name="camera_yaw" default="0.0"/>
 
   <!-- Live range/pose readout. ros2 launch prefixes every line with [node-N],
        which breaks the monitor's in-place block redraw, so here it runs in plain
@@ -112,24 +113,13 @@
     <arg name="threshold_filter_max" value="$(var threshold_filter_max)"/>
     <arg name="depth_crop_left" value="$(var depth_crop_left)"/>
     <arg name="point_cloud_decimation_filter_factor" value="$(var point_cloud_decimation)"/>
-
-    <!-- camera_frame_publisher estimates roll/pitch from these. -->
-    <arg name="enable_accel" value="true"/>
-    <arg name="enable_gyro" value="true"/>
-    <arg name="enable_sync_output_accel_gyro" value="true"/>
   </include>
 
-  <!-- base_frame -> camera_link. Same node and parameters the emergency-detector
-       launch uses, so both stacks put the camera in the same place. -->
-  <node pkg="primitive_camera_tools" exec="camera_frame_publisher" name="camera_frame_publisher"
-        if="$(var publish_camera_tf)" output="screen">
-    <param name="parent_frame" value="$(var base_frame)"/>
-    <param name="child_frame" value="camera_link"/>
-    <param name="calibration_file" value="$(var camera_calibration_file)"/>
-    <param name="use_imu" value="$(var use_imu)"/>
-    <param name="integrate_yaw" value="$(var integrate_yaw)"/>
-    <param name="imu_topic" value="/camera/gyro_accel/sample"/>
-  </node>
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="camera_mount_tf"
+        if="$(var publish_camera_tf)"
+        args="--x $(var camera_x) --y $(var camera_y) --z $(var camera_z)
+              --roll $(var camera_roll) --pitch $(var camera_pitch) --yaw $(var camera_yaw)
+              --frame-id $(var base_frame) --child-frame-id camera_link"/>
 
   <node pkg="dock_target_detector" exec="dock_detector" name="dock_detector"
         output="screen">
@@ -142,6 +132,10 @@
         if="$(var launch_monitor)" output="screen"
         args="--plain --rate $(var monitor_rate)"/>
 
+  <!-- A terminal inside snap-packaged VS Code exports GTK_PATH, LOCPATH etc. pointing
+       into /snap, and rviz2 then loads snap's core20 libpthread and dies at once
+       ("undefined symbol: __libc_pthread_init"). Strip them for rviz2 only. -->
   <node pkg="rviz2" exec="rviz2" name="rviz2" if="$(var launch_rviz)"
-        args="-d $(var rviz_config)"/>
+        args="-d $(var rviz_config)"
+        launch-prefix="env -u GTK_PATH -u GTK_EXE_PREFIX -u GTK_IM_MODULE_FILE -u GDK_PIXBUF_MODULE_FILE -u GDK_PIXBUF_MODULEDIR -u GIO_MODULE_DIR -u LOCPATH -u GSETTINGS_SCHEMA_DIR"/>
 </launch>

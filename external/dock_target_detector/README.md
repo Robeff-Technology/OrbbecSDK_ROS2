@@ -238,11 +238,10 @@ That is the whole thing in one command: camera, detector and the live readout.
 | `point_cloud_decimation` | `8` | matches the emergency detector; cloud only |
 | `depth_crop_left` | `150` | matches the emergency detector |
 | `process_rate` | `10.0` | frames per second the detector processes |
-| `launch_rviz` | `false` | open RViz with [config/dock_detector.rviz](config/dock_detector.rviz) |
-| `publish_camera_tf` | `true` | publish `base_link` -> `camera_link`; false if a URDF already does |
+| `launch_rviz` | `true` | open RViz with [config/dock_detector.rviz](config/dock_detector.rviz) |
+| `publish_camera_tf` | `true` | static `base_link` -> `camera_link`; false if a URDF already does |
 | `base_frame` | `base_link` | frame the camera is mounted on |
-| `use_imu` | `true` | estimate camera roll/pitch live from the camera IMU |
-| `camera_calibration_file` | `primitive_camera_tools/config/camera_calibration.yaml` | camera mount position |
+| `camera_x/y/z`, `camera_roll/pitch/yaw` | from `camera_mount_calibration.yaml` | camera mount pose [m, rad] |
 
 ### RViz
 
@@ -261,8 +260,6 @@ Markers carry a 1 s lifetime, so they ride through the gaps between detections
 without leaving a stale pose on screen once the target is really gone.
 
 
-The launch reuses `primitive_camera_tools`' camera mounting setup, so this stack
-and the emergency detector put the camera in the same place.
 [config/dock_detector.rviz](config/dock_detector.rviz) is the emergency detector's config with
 the QR displays swapped in: the depth cloud, `~/debug/markers`, `~/pose` as axes
 and `~/debug/image`.
@@ -270,9 +267,9 @@ and `~/debug/image`.
 Its Fixed Frame is `base_link`, and the driver only publishes
 `camera_link` -> `*_optical_frame`. **Something must supply `base_link` ->
 `camera_link` or RViz displays nothing at all** — no cloud, no markers, no TF.
-That hop comes from `camera_frame_publisher`, which the launch now runs (it needs
-the IMU streams, which the launch enables for it). If you see an empty RViz, check
-that hop first:
+The launch publishes that hop as a static transform (`publish_camera_tf`), using the
+mount from `orbbec_camera/config/camera_mount_calibration.yaml`. It is fixed: there
+is no live IMU roll/pitch correction. If you see an empty RViz, check that hop first:
 
 ```bash
 ros2 run tf2_ros tf2_echo base_link camera_link
@@ -429,7 +426,7 @@ pipeline never starts.
 
 A launch that does not shut down cleanly leaves its nodes running, and they are
 easy to miss. Several stacks at once means several camera containers competing
-for the device and several `camera_frame_publisher` nodes fighting over the same
+for the device and several transform publishers fighting over the same
 `base_link -> camera_link` transform, which makes everything jitter in RViz and
 quietly corrupts any measurement. Check before trusting a number:
 

@@ -240,6 +240,7 @@ That is the whole thing in one command: camera, detector and the live readout.
 | `process_rate` | `10.0` | frames per second the detector processes |
 | `launch_rviz` | `true` | open RViz with [config/dock_detector.rviz](config/dock_detector.rviz) |
 | `publish_camera_tf` | `true` | static `base_link` -> `camera_link`; false if a URDF already does |
+| `dock_target_detector_param_path` | `config/params.yaml` | detector parameter file |
 | `base_frame` | `base_link` | frame the camera is mounted on |
 | `camera_x/y/z`, `camera_roll/pitch/yaw` | from `camera_mount_calibration.yaml` | camera mount pose [m, rad] |
 
@@ -269,7 +270,9 @@ Its Fixed Frame is `base_link`, and the driver only publishes
 `camera_link` or RViz displays nothing at all** — no cloud, no markers, no TF.
 The launch publishes that hop as a static transform (`publish_camera_tf`), using the
 mount from `orbbec_camera/config/camera_mount_calibration.yaml`. It is fixed: there
-is no live IMU roll/pitch correction. If you see an empty RViz, check that hop first:
+is no live IMU roll/pitch correction. On the vehicle the sensor kit URDF already has
+the camera mount (`ozismak1_sensor_kit_description`), so the vehicle launch sets
+`publish_camera_tf:=false`. If you see an empty RViz, check that hop first:
 
 ```bash
 ros2 run tf2_ros tf2_echo base_link camera_link

@@ -87,6 +87,10 @@
        On the vehicle rbf_docking enables it for the duration of docking. -->
   <arg name="start_enabled" default="true"/>
 
+  <!-- The detector's parameter file; the vehicle launch in autoware_launch supplies its own. -->
+  <arg name="dock_target_detector_param_path"
+       default="$(find-pkg-share dock_target_detector)/config/params.yaml"/>
+
 
   <include file="$(find-pkg-share orbbec_camera)/launch/gemini_330_series.launch.py"
            if="$(var launch_camera)">
@@ -127,7 +131,7 @@
 
   <node pkg="dock_target_detector" exec="dock_detector" name="dock_detector"
         output="screen">
-    <param from="$(find-pkg-share dock_target_detector)/config/params.yaml"/>
+    <param from="$(var dock_target_detector_param_path)"/>
     <param name="marker_size" value="$(var marker_size)" type="float"/>
     <param name="process_rate" value="$(var process_rate)" type="float"/>
     <param name="start_enabled" value="$(var start_enabled)" type="bool"/>

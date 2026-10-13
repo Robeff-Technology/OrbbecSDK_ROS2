@@ -382,7 +382,7 @@ On the vehicle the detector runs idle (`start_enabled:=false`) and rbf_docking
 drives it: when docking starts it calls `/dock_detector/enable` with `true`, reads
 the tag from `/dock_detector/detections`, and disables the detector again once
 docking ends (docked, failed or cancelled). The wiring is in
-`ozismak_vehicle_launch/launch/vehicle_interface.launch.xml`.
+`ozismak1_vehicle_launch/launch/vehicle_interface.launch.xml`.
 
 The tag frame in `~/detections` is the face frame above: **x out of the face
 towards the vehicle, y to the camera's right, z up**. rbf_docking's

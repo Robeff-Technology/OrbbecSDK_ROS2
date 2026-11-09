@@ -59,9 +59,18 @@
        the same factor; the depth range and yaw are unaffected. -->
   <arg name="marker_size" default="0.19"/>
 
+  <!-- usb2:=true overrides the colour and depth profiles below with 640x480 @ 10 fps
+       for both, which the 335L offers over USB 2.0 (1280x720 colour @ 30 and
+       1280x800 depth @ 10 are USB 3 only). -->
+  <arg name="usb2" default="false"/>
+
   <arg name="color_width" default="1280"/>
   <arg name="color_height" default="720"/>
   <arg name="color_fps" default="30"/>
+  <!-- Over USB 2.0 the 335L offers 1280x800 depth only at 5 fps; use e.g.
+       depth_width:=640 depth_height:=480 there, or just usb2:=true. -->
+  <arg name="depth_width" default="1280"/>
+  <arg name="depth_height" default="800"/>
 
   <!-- SW alignment works for any resolution pair, at CPU cost in the driver.
        HW is free but the 335L REFUSES this profile pair: 1280x720 colour with
@@ -81,7 +90,7 @@
        image, where the stereo pair has no overlap and depth is invalid anyway.
        With D2C this leaves the left of the COLOUR frame without depth, so a target
        that far left falls back to the PnP estimate. Set 0 to keep the full width. -->
-  <arg name="depth_crop_left" default="0.0"/>
+  <arg name="depth_crop_left" default="0"/>
   <arg name="threshold_filter_max" default="4500"/>
 
   <!-- Frames per second the detector actually processes. The camera runs at 30, but
@@ -100,12 +109,14 @@
     <arg name="device_preset" value="High Accuracy"/>
     <arg name="depth_precision" value="1mm"/>
     <arg name="laser_energy_level" value="6"/>
-    <arg name="depth_width" value="1280"/>
-    <arg name="depth_height" value="800"/>
+    <arg name="depth_width" value="$(eval &quot;'640' if '$(var usb2)' == 'true' else '$(var depth_width)'&quot;)"/>
+    <arg name="depth_height" value="$(eval &quot;'480' if '$(var usb2)' == 'true' else '$(var depth_height)'&quot;)"/>
+    <!-- 0 lets the driver pick the fps; usb2 pins 10 to match the colour stream. -->
+    <arg name="depth_fps" value="$(eval &quot;'10' if '$(var usb2)' == 'true' else '0'&quot;)"/>
     <arg name="enable_color" value="true"/>
-    <arg name="color_width" value="$(var color_width)"/>
-    <arg name="color_height" value="$(var color_height)"/>
-    <arg name="color_fps" value="$(var color_fps)"/>
+    <arg name="color_width" value="$(eval &quot;'640' if '$(var usb2)' == 'true' else '$(var color_width)'&quot;)"/>
+    <arg name="color_height" value="$(eval &quot;'480' if '$(var usb2)' == 'true' else '$(var color_height)'&quot;)"/>
+    <arg name="color_fps" value="$(eval &quot;'10' if '$(var usb2)' == 'true' else '$(var color_fps)'&quot;)"/>
 
     <!-- Register depth into the colour frame, so /camera/depth/image_raw comes out
          at colour resolution and a tag pixel indexes it directly. -->

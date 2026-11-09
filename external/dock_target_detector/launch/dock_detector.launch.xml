@@ -20,18 +20,25 @@
 
   <!-- base_link -> camera_link. The driver only publishes camera_link ->
        *_optical_frame, and the RViz config uses base_link as its Fixed Frame, so
-       without this hop RViz shows nothing at all. Static, from
-       orbbec_camera/config/camera_mount_calibration.yaml (keep the two in sync);
-       no IMU roll/pitch correction. Set publish_camera_tf false if a URDF or
-       another node already publishes it. -->
-  <arg name="publish_camera_tf" default="true"/>
+       without this hop RViz shows nothing at all.
+
+       On the vehicle the sensor kit URDF already publishes it (camera_link_joint,
+       from sensor_kit_calibration.yaml in ozismak1_sensor_kit_description), so this
+       stays OFF by default. Turning it on with the vehicle stack up gives camera_link
+       two parents; listeners then take whichever arrived last, and with a wrong mount
+       the target lands rotated about the vehicle (in front of it instead of behind).
+
+       Set it true only on the bench, without the vehicle stack. The values are the
+       measured mount in base_link, the same pose the URDF resolves to (keep the two in
+       sync): rear facing (yaw 180 deg), 32.79 deg down, 0.91 m up. -->
+  <arg name="publish_camera_tf" default="false"/>
   <arg name="base_frame" default="base_link"/>
-  <arg name="camera_x" default="2.118143"/>
+  <arg name="camera_x" default="-0.25"/>
   <arg name="camera_y" default="0.0"/>
-  <arg name="camera_z" default="2.265695"/>
-  <arg name="camera_roll" default="0.0"/>
-  <arg name="camera_pitch" default="0.7853982"/>
-  <arg name="camera_yaw" default="0.0"/>
+  <arg name="camera_z" default="0.91"/>
+  <arg name="camera_roll" default="-0.0057596"/>
+  <arg name="camera_pitch" default="0.5722874"/>
+  <arg name="camera_yaw" default="3.1415927"/>
 
   <!-- Live range/pose readout. ros2 launch prefixes every line with [node-N],
        which breaks the monitor's in-place block redraw, so here it runs in plain
@@ -55,10 +62,6 @@
   <arg name="color_width" default="1280"/>
   <arg name="color_height" default="720"/>
   <arg name="color_fps" default="30"/>
-  <!-- The driver publishes a point cloud for every depth frame, so this also sets the
-       /camera/depth/points rate. 10 matches what the detector processes anyway and
-       cuts the driver's SW D2C work to a third of 30 fps. -->
-  <arg name="depth_fps" default="10"/>
 
   <!-- SW alignment works for any resolution pair, at CPU cost in the driver.
        HW is free but the 335L REFUSES this profile pair: 1280x720 colour with
@@ -85,7 +88,11 @@
        a decode plus the crop-and-upscale fallback costs ~60 ms per frame in Python,
        so processing every frame saturates a core and builds a backlog that shows up
        as lag. Sampling the same scene at 10 Hz loses almost no detections. -->
-  <arg name="process_rate" default="30.0"/>
+  <arg name="process_rate" default="10.0"/>
+
+  <!-- Built-in IMU (accel + gyro), off by default. Only needed to calibrate the mount's roll and
+       pitch from gravity (vehicle standing still); the detector itself does not use it. -->
+  <arg name="enable_imu" default="false"/>
 
 
   <include file="$(find-pkg-share orbbec_camera)/launch/gemini_330_series.launch.py"
@@ -95,7 +102,6 @@
     <arg name="laser_energy_level" value="6"/>
     <arg name="depth_width" value="1280"/>
     <arg name="depth_height" value="800"/>
-    <arg name="depth_fps" value="$(var depth_fps)"/>
     <arg name="enable_color" value="true"/>
     <arg name="color_width" value="$(var color_width)"/>
     <arg name="color_height" value="$(var color_height)"/>
@@ -118,6 +124,8 @@
     <arg name="threshold_filter_max" value="$(var threshold_filter_max)"/>
     <arg name="depth_crop_left" value="$(var depth_crop_left)"/>
     <arg name="point_cloud_decimation_filter_factor" value="$(var point_cloud_decimation)"/>
+    <arg name="enable_accel" value="$(var enable_imu)"/>
+    <arg name="enable_gyro" value="$(var enable_imu)"/>
   </include>
 
   <node pkg="tf2_ros" exec="static_transform_publisher" name="camera_mount_tf"

@@ -44,7 +44,14 @@ of the sheet. Grow it too far and it starts eating background, which is what the
 RANSAC pass is there to reject.
 """
 import math
+import os
 import time
+
+# Must precede the numpy/cv2 imports. libgomp otherwise starts one thread per core and
+# they spin-wait between the many small parallel calls each frame: on a 28-core host
+# the node sat at ~2660 % CPU, and ~40 % with a single thread, at the same frame rate.
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")
 
 import cv2
 import numpy as np
@@ -450,10 +457,10 @@ class DockDetector(Node):
         return rays * ((normal @ centroid) / denom)[:, None]
 
     def publish_markers(self, header, normal, centroid, quad, result):
-        # Sized to be visible from the vehicle, not from the camera: with the
-        # camera 2 m forward of base_link and the target ~3 m beyond that, the
-        # marker sits ~5 m from the RViz origin, where a centimetre-scale arrow is
-        # a few pixels. lifetime keeps a marker through the gaps between
+        # Sized to be visible from the vehicle, not from the camera: the camera
+        # looks backwards from the rear of the vehicle and the target is metres
+        # behind it, so seen from the RViz origin a centimetre-scale arrow is a
+        # few pixels. lifetime keeps a marker through the gaps between
         # detections without leaving a stale one on screen forever.
         life = Duration(sec=1, nanosec=0)
 

@@ -234,21 +234,20 @@ That is the whole thing in one command: camera, detector and the live readout.
 | `launch_monitor` | `true` | live readout, in plain mode (see below) |
 | `monitor_rate` | `4.0` | monitor updates per second |
 | `color_width` / `color_height` | `1280` / `720` | colour resolution; more pixels = more range |
-| `depth_fps` | `10` | depth rate, and so also the `/camera/depth/points` rate |
 | `align_mode` | `SW` | leave it; `HW` is refused at these resolutions (see below) |
 | `point_cloud_decimation` | `8` | matches the emergency detector; cloud only |
 | `depth_crop_left` | `150` | matches the emergency detector |
 | `process_rate` | `10.0` | frames per second the detector processes |
 | `launch_rviz` | `true` | open RViz with [config/dock_detector.rviz](config/dock_detector.rviz) |
-| `publish_camera_tf` | `true` | static `base_link` -> `camera_link`; false if a URDF already does |
+| `publish_camera_tf` | `false` | static `base_link` -> `camera_link`; bench only, the vehicle URDF already publishes it |
 | `base_frame` | `base_link` | frame the camera is mounted on |
 | `camera_x/y/z`, `camera_roll/pitch/yaw` | from `camera_mount_calibration.yaml` | camera mount pose [m, rad] |
 
 ### RViz
 
-Marker sizes are chosen for the **vehicle's** viewpoint, not the camera's. With the
-camera 2 m forward of `base_link` and the target ~3 m beyond it, the markers sit
-~5 m from the RViz origin, where a centimetre-scale arrow is a few pixels. The
+Marker sizes are chosen for the **vehicle's** viewpoint, not the camera's. The
+camera sits at the rear of the vehicle looking backwards, and with the target a few
+metres behind it a centimetre-scale arrow is a few pixels from the RViz origin. The
 displays are:
 
 - a **yellow outline** of the target's real 3D corners, obtained by intersecting
@@ -268,12 +267,21 @@ and `~/debug/image`.
 Its Fixed Frame is `base_link`, and the driver only publishes
 `camera_link` -> `*_optical_frame`. **Something must supply `base_link` ->
 `camera_link` or RViz displays nothing at all** — no cloud, no markers, no TF.
-The launch publishes that hop as a static transform (`publish_camera_tf`), using the
-mount from `orbbec_camera/config/camera_mount_calibration.yaml`. It is fixed: there
-is no live IMU roll/pitch correction. If you see an empty RViz, check that hop first:
+
+On the vehicle that is the sensor kit URDF (`camera_link_joint`, from
+`sensor_kit_calibration.yaml` in `ozismak1_sensor_kit_description`), so the launch
+leaves its own static transform off. **Never turn `publish_camera_tf` on with the
+vehicle stack up:** `camera_link` then has two parents, each listener keeps whichever
+arrived last, and a mount that disagrees puts the target rotated about the vehicle
+(in front of it instead of behind). On the bench, without the vehicle stack, launch
+with `publish_camera_tf:=true`; the defaults are the measured mount, mirrored in
+`orbbec_camera/config/camera_mount_calibration.yaml`. It is fixed: there is no live
+IMU roll/pitch correction. If RViz is empty or the target is in the wrong place,
+check that hop and who publishes it:
 
 ```bash
-ros2 run tf2_ros tf2_echo base_link camera_link
+ros2 run tf2_ros tf2_echo base_link camera_link   # rear facing: x -0.25, yaw 180 deg
+ros2 topic info -v /tf_static | grep "Node name"  # camera_mount_tf must not be listed
 ```
 
 `ros2 launch` prefixes every line with `[node-N]`, which breaks the monitor's

@@ -52,6 +52,12 @@
   <arg name="monitor_rate" default="4.0"/>
   <arg name="rviz_config"
        default="$(find-pkg-share dock_target_detector)/config/dock_detector.rviz"/>
+  <!-- Detector parameters. On the vehicle autoware_launch passes the vehicle's copy
+       (config_<vehicle>/vehicle/dock_target_detector/params.yaml); the package's own
+       config/params.yaml is the default for bench runs. marker_size and process_rate
+       below are still applied on top of this file. -->
+  <arg name="dock_target_detector_param_path"
+       default="$(find-pkg-share dock_target_detector)/config/params.yaml"/>
 
   <!-- Side of the printed tag's black border, edge to edge, EXCLUDING the
        white quiet zone. `ros2 run dock_target_detector make_dock_target` prints the
@@ -99,9 +105,9 @@
        as lag. Sampling the same scene at 10 Hz loses almost no detections. -->
   <arg name="process_rate" default="10.0"/>
 
-  <!-- Built-in IMU (accel + gyro), off by default. Only needed to calibrate the mount's roll and
-       pitch from gravity (vehicle standing still); the detector itself does not use it. -->
-  <arg name="enable_imu" default="false"/>
+  <!-- Built-in IMU (accel + gyro), on by default. The detector itself does not use it; it gives
+       the mount's roll and pitch from gravity (vehicle standing still). -->
+  <arg name="enable_imu" default="true"/>
 
 
   <include file="$(find-pkg-share orbbec_camera)/launch/gemini_330_series.launch.py"
@@ -147,7 +153,7 @@
 
   <node pkg="dock_target_detector" exec="dock_detector" name="dock_detector"
         output="screen">
-    <param from="$(find-pkg-share dock_target_detector)/config/params.yaml"/>
+    <param from="$(var dock_target_detector_param_path)"/>
     <param name="marker_size" value="$(var marker_size)" type="float"/>
     <param name="process_rate" value="$(var process_rate)" type="float"/>
   </node>
